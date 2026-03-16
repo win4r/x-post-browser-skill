@@ -47,7 +47,9 @@ Otherwise treat it as **topic mode (draft + confirm)**:
 
 3) Enter text (IMPORTANT)
 - Click the textbox.
-- Prefer **JS insertion via `browser.act kind="evaluate"`** (X’s composer is a `contenteditable`; `type` may corrupt hashtags and render them as `####`).
+- Prefer **JS insertion via `browser.act kind="evaluate"`**.
+  - X’s composer is `contenteditable` (Draft.js-like). Keystroke `type` may corrupt hashtags (e.g., turn `#OpenClaw` into `####`).
+  - Simple `textContent=` may display text but keep **Post disabled**; prefer `document.execCommand('insertText')`.
 
 Example `evaluate` payload (embed the final post text in `text`):
 
@@ -56,10 +58,19 @@ Example `evaluate` payload (embed the final post text in `text`):
   const text = '...final post text...';
   const el = document.querySelector('[role="textbox"][aria-label="Post text"]');
   if (!el) return { ok: false, err: 'textbox not found' };
+
   el.focus();
-  el.textContent = '';
-  el.textContent = text;
-  el.dispatchEvent(new InputEvent('input', { bubbles: true, data: text, inputType: 'insertText' }));
+  document.execCommand('selectAll', false, null);
+  document.execCommand('delete', false, null);
+  document.execCommand('insertText', false, text);
+
+  // Verify exact text to avoid residue like trailing debug chars
+  const actual = (el.innerText || '').replace(/\r/g, '');
+  if (actual !== text) {
+    document.execCommand('selectAll', false, null);
+    document.execCommand('delete', false, null);
+    document.execCommand('insertText', false, text);
+  }
   return { ok: true };
 }
 ```
