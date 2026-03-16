@@ -20,11 +20,10 @@ Otherwise treat it as **topic mode (draft + confirm)**:
 ## Topic mode: drafting rules
 
 - Language: **Chinese**.
-- Length target: **~100 Chinese characters** (keep comfortably within X’s 280-char limit after adding hashtags).
+- Length target: **~100 Chinese characters** (stay comfortably within X’s limits after hashtags).
 - End with **3–6 English hashtags** derived from the topic.
   - Prefer high-signal, searchable tags; avoid irrelevant “trend hijacking”.
   - Mix 1–2 broad tags + 2–4 precise tags.
-  - Examples (don’t hardcode): `#OpenClaw #AIAgents #AgenticAI #LLM #Automation`.
 - Output to the user:
   1) Draft text (exactly what will be posted)
   2) Ask for confirmation: user must reply **“发布”** / **“发”** to proceed.
@@ -37,60 +36,86 @@ Otherwise treat it as **topic mode (draft + confirm)**:
 
 ## Browser workflow (must use profile="user")
 
-1) Open X home
+### 1) Open X home
+
 - `browser.open` with `profile="user"` → `https://x.com/home`
-- If redirected to login or blocked by consent prompts: ask the user to complete the login/consent in that browser tab, then continue.
+- If redirected to login/consent: ask the user to complete it in that tab, then continue.
 
-2) Locate composer
-- `browser.snapshot` with `refs="aria"`
-- Find the textbox labeled like **“Post text”** / “What’s happening?”
+### 2) Open the compose dialog (preferred)
 
-3) Enter text (IMPORTANT)
-- Click the textbox.
-- Prefer **JS insertion via `browser.act kind="evaluate"`**.
-  - X’s composer is `contenteditable` (Draft.js-like). Keystroke `type` may corrupt hashtags (e.g., turn `#OpenClaw` into `####`).
-  - Simple `textContent=` may display text but keep **Post disabled**; prefer `document.execCommand('insertText')`.
+The home inline composer can be flaky; prefer the dedicated composer:
 
-Example `evaluate` payload (embed the final post text in `text`):
+- Click the left-side **“Post”** button/link (often `data-testid="SideNav_NewTweet_Button"` or `a[href="/compose/post"][aria-label="Post"]`).
+- Confirm you now see a **dialog** composer with:
+  - textbox `data-testid="tweetTextarea_0"` (aria-label: "Post text")
+  - Post button `data-testid="tweetButton"`
+
+If the dialog cannot be opened, fall back to the home inline composer.
+
+### 3) Insert the post text (IMPORTANT)
+
+X’s composer is `contenteditable` (Draft.js-like).
+
+- Do **not** rely on keystroke `type` for hashtags/mentions. It can corrupt tags (e.g., render as `####`).
+- Prefer `browser.act kind="evaluate"` with **`document.execCommand('insertText')`**.
+
+Recommended `evaluate` payload (embed the final post text in `text`):
 
 ```js
 () => {
   const text = '...final post text...';
-  const el = document.querySelector('[role="textbox"][aria-label="Post text"]');
-  if (!el) return { ok: false, err: 'textbox not found' };
+
+  // Prefer dialog composer
+  const el =
+    document.querySelector('div[role="dialog"] [data-testid="tweetTextarea_0"]') ||
+    document.querySelector('[role="textbox"][aria-label="Post text"]');
+
+  if (!el) return { ok: false, err: 'composer not found' };
 
   el.focus();
   document.execCommand('selectAll', false, null);
   document.execCommand('delete', false, null);
   document.execCommand('insertText', false, text);
 
-  // Verify exact text to avoid residue like trailing debug chars
+  // Verify exact text (prevents residue like trailing debug chars)
   const actual = (el.innerText || '').replace(/\r/g, '');
   if (actual !== text) {
     document.execCommand('selectAll', false, null);
     document.execCommand('delete', false, null);
     document.execCommand('insertText', false, text);
   }
-  return { ok: true };
+
+  return { ok: true, actual: (el.innerText || '').replace(/\r/g, '') };
 }
 ```
 
-- Only fall back to `browser.act kind="type"` if `evaluate` is blocked/unavailable.
+### 4) Preflight checks (must pass before clicking Post)
 
-4) Publish
-- Click the **“Post”** button.
+- **Text integrity check**
+  - Read back the composer text (via `evaluate` or snapshot value).
+  - Must match the intended text exactly.
+  - Must not contain `####`.
+- **Button enabled check**
+  - In dialog mode: `button[data-testid="tweetButton"]` must not be disabled / `aria-disabled=true`.
+  - If disabled: re-run the insertion once (Step 3). If still disabled, stop and report.
+
+### 5) Publish
+
+- Click the dialog Post button (`data-testid="tweetButton"`) if present; otherwise click the inline Post button.
 - Wait ~2–3 seconds.
 
-5) Verify success
-- `browser.snapshot` again and confirm a newly posted item appears in the timeline (often marked “Now”) containing the posted text.
-- If possible, click into the post detail and report the final URL; if clicking times out, report that it was posted and offer to fetch the link on request.
+### 6) Verify success + capture permalink
+
+- Navigate/return to `https://x.com/home`.
+- Find the newly posted item (often marked “Now/1s”) containing the beginning of the text.
+- Click into the post detail (click the timestamp like “1s” is usually easiest), then capture `location.href`.
 
 ## Reliability / fallbacks
 
-- If elements aren’t interactive: refresh the page, re-snapshot, and retry once.
-- If the composer is missing: ensure you are on `https://x.com/home` (navigate there explicitly).
-- If hashtags show up as `####` or tag text disappears: clear the composer and re-insert the full text using the **`evaluate` method** above.
-- If posting fails due to rate limits or UI errors: stop and report the exact on-screen error text.
+- If elements aren’t interactive: refresh, re-snapshot, and retry once.
+- If the composer is missing: navigate to `https://x.com/home`, then open compose dialog again.
+- If hashtags appear as `####` or disappear: clear and re-insert using the `execCommand('insertText')` method.
+- If posting fails due to UI/rate-limit errors: stop and report the exact on-screen error text.
 
 ## Examples (intended triggers)
 

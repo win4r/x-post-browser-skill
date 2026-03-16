@@ -4,16 +4,17 @@ Publish posts to **X (Twitter)** via **OpenClaw browser automation** (web UI) us
 
 - `browser` tool
 - `profile="user"`
-- `https://x.com/home`
+- X web UI (`https://x.com`)
 
 This is **browser-only** (no API / no tokens / no Tweepy). It clicks the same UI you’d click.
 
 ## What it does
 
-- Opens X Home
-- Types your post into the composer
+- Opens X
+- Opens the **compose dialog** (preferred, more reliable than the inline home composer)
+- Inserts your post text
 - Clicks **Post**
-- Verifies the post shows up in the timeline
+- Verifies the post shows up and (best-effort) returns the permalink
 
 It supports **two input modes**:
 
@@ -68,6 +69,15 @@ Expected behavior:
 - 1–2 broad searchable tags + 2–4 precise tags
 - No irrelevant “trend hijacking”
 
+## Important reliability note (X composer)
+
+X’s post composer is `contenteditable` (Draft.js-like). Synthetic keystroke typing can:
+
+- corrupt hashtags (e.g. render them as `####`)
+- leave trailing residue
+
+So this skill prefers **DOM insertion** via `evaluate` + `document.execCommand('insertText')`, plus a read-back verification before clicking Post.
+
 ## Safety notes
 
 - Posting to X is a **public action**.
@@ -76,10 +86,10 @@ Expected behavior:
 
 ## Troubleshooting
 
-- **Composer / Post button not found**: ensure you’re on `https://x.com/home`, then retry.
+- **Composer / Post button not found**: ensure you’re on `https://x.com/home`, then retry opening the compose dialog.
 - **Not interactive / timed out**: refresh, re-snapshot, retry once.
 - **Redirected to login**: log in manually in the opened tab, then retry.
-- **Post button disabled**: text may be empty, too long, or a UI modal is blocking input.
+- **Post button disabled**: insertion may not be recognized; re-run the insertion method; if still disabled, stop and inspect UI errors.
 
 ## Repo contents
 
