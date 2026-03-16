@@ -45,9 +45,26 @@ Otherwise treat it as **topic mode (draft + confirm)**:
 - `browser.snapshot` with `refs="aria"`
 - Find the textbox labeled like **“Post text”** / “What’s happening?”
 
-3) Enter text
+3) Enter text (IMPORTANT)
 - Click the textbox.
-- Use `browser.act kind="type"` (do **not** rely on `slowly=true`).
+- Prefer **JS insertion via `browser.act kind="evaluate"`** (X’s composer is a `contenteditable`; `type` may corrupt hashtags and render them as `####`).
+
+Example `evaluate` payload (embed the final post text in `text`):
+
+```js
+() => {
+  const text = '...final post text...';
+  const el = document.querySelector('[role="textbox"][aria-label="Post text"]');
+  if (!el) return { ok: false, err: 'textbox not found' };
+  el.focus();
+  el.textContent = '';
+  el.textContent = text;
+  el.dispatchEvent(new InputEvent('input', { bubbles: true, data: text, inputType: 'insertText' }));
+  return { ok: true };
+}
+```
+
+- Only fall back to `browser.act kind="type"` if `evaluate` is blocked/unavailable.
 
 4) Publish
 - Click the **“Post”** button.
@@ -61,6 +78,7 @@ Otherwise treat it as **topic mode (draft + confirm)**:
 
 - If elements aren’t interactive: refresh the page, re-snapshot, and retry once.
 - If the composer is missing: ensure you are on `https://x.com/home` (navigate there explicitly).
+- If hashtags show up as `####` or tag text disappears: clear the composer and re-insert the full text using the **`evaluate` method** above.
 - If posting fails due to rate limits or UI errors: stop and report the exact on-screen error text.
 
 ## Examples (intended triggers)
