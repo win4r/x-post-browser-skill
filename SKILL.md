@@ -107,6 +107,8 @@ Use `browser.act kind="evaluate"` with a ClipboardEvent:
 
 Replace `"YOUR POST TEXT HERE"` with the actual post text. Use `\n` in the JS string for newlines — the ClipboardEvent will render them as real line breaks.
 
+> **⚠️ Trailing space after last hashtag:** Always append a space after the final hashtag (e.g. `"#AI #OpenClaw "` not `"#AI #OpenClaw"`). Without the trailing space, X's hashtag autocomplete dropdown stays open and can intercept the Post button click. The trailing space closes the dropdown.
+
 > **Why ClipboardEvent?** X uses a React/Draft.js contenteditable editor.
 > - ❌ `browser.act kind="type"` — renders `\n` as literal backslash-n text; corrupts hashtags into `####`.
 > - ❌ `document.execCommand('insertText')` — deprecated; unreliable on Draft.js; may silently fail.
