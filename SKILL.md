@@ -48,19 +48,33 @@ Before publishing, estimate the weighted count. If over 260, shorten the text (t
 
 All browser calls MUST include `profile="user"`.
 
-### Step 1: Navigate directly to compose page
+### Step 1: Navigate to profile page, then open compose
+
+First navigate to the profile page so that after posting, the dialog closes back to the profile where you can verify the new post:
 
 ```
-browser.navigate → url: "https://x.com/compose/post", profile: "user"
+browser.navigate → url: "https://x.com/AISuperDomain", profile: "user"
 ```
 
-Then wait 2 seconds for the dialog to render:
+Wait 2 seconds for the page to load:
 
 ```
 browser.act → kind: "wait", timeMs: 2000
 ```
 
-> **Why direct URL?** Clicking the sidebar "Post" button is fragile. Direct navigation always opens the compose dialog reliably.
+Then open the compose dialog overlay:
+
+```
+browser.navigate → url: "https://x.com/compose/post", profile: "user"
+```
+
+Wait 2 seconds for the dialog to render:
+
+```
+browser.act → kind: "wait", timeMs: 2000
+```
+
+> **Why two navigations?** `/compose/post` opens as an overlay on the current page. By landing on the profile first, the compose dialog closes back to the profile page after posting — making it easy to verify the new post appeared.
 
 ### Step 2: Snapshot and locate elements
 
@@ -182,7 +196,7 @@ If you need to start over completely:
 1. Click the `Close` button (the X in the dialog corner)
 2. A "Save post?" dialog appears → click `Discard`
 3. Wait 1.5 seconds
-4. Navigate to `x.com/compose/post` again
+4. Navigate to `x.com/AISuperDomain` first, then `x.com/compose/post`
 
 ## Reliability notes
 
